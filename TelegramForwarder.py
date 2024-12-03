@@ -1,13 +1,18 @@
 import time
 import asyncio
 from telethon.sync import TelegramClient
+from telethon.tl.types import Message
+from concurrent.futures import ProcessPoolExecutor
+
 
 class TelegramForwarder:
-    def __init__(self, api_id, api_hash, phone_number):
+    def __init__(self, api_id, api_hash, phone_number, try_delay):
         self.api_id = api_id
         self.api_hash = api_hash
         self.phone_number = phone_number
-        self.client = TelegramClient('session_' + phone_number, api_id, api_hash)
+        self.try_delay = try_delay
+        self.client = TelegramClient(
+            'session_' + phone_number, api_id, api_hash)
 
     async def list_chats(self):
         await self.client.connect()
@@ -19,12 +24,9 @@ class TelegramForwarder:
 
         # Get a list of all the dialogs (chats)
         dialogs = await self.client.get_dialogs()
-        chats_file = open(f"chats_of_{self.phone_number}.txt", "w")
         # Print information about each chat
         for dialog in dialogs:
             print(f"Chat ID: {dialog.id}, Title: {dialog.title}")
-            chats_file.write(f"Chat ID: {dialog.id}, Title: {dialog.title} \n")
-          
 
         print("List of groups printed successfully!")
 
@@ -41,33 +43,39 @@ class TelegramForwarder:
         while True:
             print("Checking for messages and forwarding them...")
             # Get new messages since the last checked message
-            messages = await self.client.get_messages(source_chat_id, min_id=last_message_id, limit=None)
+            messages = await self.client.get_messages(source_chat_id, min_id=(last_message_id + 1), limit=None)
+
+            if (messages is None):
+                print("No new messages found")
+                await asyncio.sleep(self.try_delay)
+                continue
+
+            if (isinstance(messages, Message)):
+                await self.forward_message(message, destination_channel_id)
+                continue
 
             for message in reversed(messages):
                 # Check if the message text includes any of the keywords
-                if keywords:
-                    if message.text and any(keyword in message.text.lower() for keyword in keywords):
-                        print(f"Message contains a keyword: {message.text}")
+                if keywords and message.text and any(keyword in message.text.lower() for keyword in keywords):
+                    print(f"Message contains a keyword: {message.text}")
 
-                        # Forward the message to the destination channel
-                        await self.client.send_message(destination_channel_id, message.text)
-
-                        print("Message forwarded")
+                    await self.forward_message(message, destination_channel_id)
                 else:
-                        # Forward the message to the destination channel
-                        await self.client.send_message(destination_channel_id, message.text)
-
-                        print("Message forwarded")
-
+                    await self.forward_message(message, destination_channel_id)
 
                 # Update the last message ID
                 last_message_id = max(last_message_id, message.id)
 
             # Add a delay before checking for new messages again
-            await asyncio.sleep(5)  # Adjust the delay time as needed
+            await asyncio.sleep(self.try_delay)
 
+    async def forward_message(seld, message, destination_channel_id):
+        await message.forward_to(destination_channel_id)
+        print("Message forwarded, {}".format(message.text))
 
 # Function to read credentials from file
+
+
 def read_credentials():
     try:
         with open("credentials.txt", "r") as file:
@@ -81,11 +89,30 @@ def read_credentials():
         return None, None, None
 
 # Function to write credentials to file
+
+
 def write_credentials(api_id, api_hash, phone_number):
     with open("credentials.txt", "w") as file:
         file.write(api_id + "\n")
         file.write(api_hash + "\n")
         file.write(phone_number + "\n")
+
+
+def read_config():
+    try:
+        with open("config.txt", "r") as file:
+            lines = file.readlines()
+            try_delay = int(lines[0].strip())
+            return try_delay
+    except FileNotFoundError:
+        print("Config file not found.")
+        return None
+
+
+def write_config(try_delay):
+    with open("config.txt", "w") as file:
+        file.write(str(try_delay) + "\n")
+
 
 async def main():
     # Attempt to read credentials from file
@@ -99,25 +126,51 @@ async def main():
         # Write credentials to file for future use
         write_credentials(api_id, api_hash, phone_number)
 
-    forwarder = TelegramForwarder(api_id, api_hash, phone_number)
-    
-    print("Choose an option:")
-    print("1. List Chats")
-    print("2. Forward Messages")
-    
+    try_delay = read_config()
+    if try_delay is None:
+        try_delay = int(
+            input("Enter the delay time in seconds to check for new messages: "))
+        write_config(try_delay)
+
+    forwarder = TelegramForwarder(api_id, api_hash, phone_number, try_delay)
+
+    print("Choose an option: \n")
+    print("1. List Chats \n")
+    print("2. Forward Messages. \nReads forwarder.txt for source and destination chat IDs, first line is comma separated source chat IDs, second line is destination chat ID, \nthird line is comma separated keywords or does not exist for no filtering)\n")
+
     choice = input("Enter your choice: ")
-    
+
     if choice == "1":
-        await forwarder.list_chats()
+        asyncio.run(forwarder.list_chats())
     elif choice == "2":
-        source_chat_id = int(input("Enter the source chat ID: "))
-        destination_channel_id = int(input("Enter the destination chat ID: "))
-        print("Enter keywords if you want to forward messages with specific keywords, or leave blank to forward every message!")
-        keywords = input("Put keywords (comma separated if multiple, or leave blank): ").split(",")
-        
-        await forwarder.forward_messages_to_channel(source_chat_id, destination_channel_id, keywords)
+        try:
+            with open("forwarder.txt", "r") as file:
+                lines = file.readlines()
+                if (len(lines) != 3 and len(lines) != 2):
+                    print(
+                        "Invalid forwarder.txt file format. Please follow the format.")
+                    return
+
+                source_chat_ids = list(
+                    map(lambda s: int(s), lines[0].strip().split(",")))
+                destination_channel_id = lines[1].strip()
+                keywords = []
+                if len(lines) == 3:
+                    keywords = lines[2].strip().lower().split(",")
+
+                await run_loop(forwarder, source_chat_ids,
+                               destination_channel_id, keywords)
+
+        except FileNotFoundError:
+            print("Forwarder file not found.")
     else:
         print("Invalid choice")
+
+
+async def run_loop(forwarder, source_chat_ids, destination_channel_id, keywords):
+    await asyncio.gather(*(forwarder.forward_messages_to_channel(
+        int(source_chat_ids[index]), int(destination_channel_id), keywords) for index in range(len(source_chat_ids))))
+
 
 # Start the event loop and run the main function
 if __name__ == "__main__":

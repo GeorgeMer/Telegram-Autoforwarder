@@ -1,8 +1,10 @@
 # Session files
 *.session*
 
-# Credentials
+# Credentials and configuration files
+forwarder.txt
 credentials.txt
+config.txt
 config.ini
 config.py
 
