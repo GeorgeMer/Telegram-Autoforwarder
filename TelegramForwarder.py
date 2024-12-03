@@ -70,8 +70,11 @@ class TelegramForwarder:
             await asyncio.sleep(self.try_delay)
 
     async def forward_message(seld, message, destination_channel_id):
-        await message.forward_to(destination_channel_id)
-        print("Message forwarded, {}".format(message.text))
+        try:
+            await message.forward_to(destination_channel_id)
+            print("Message forwarded, {}".format(message.text))
+        except Exception as e:
+            print("Error forwarding message: {}".format(e))
 
 # Function to read credentials from file
 
