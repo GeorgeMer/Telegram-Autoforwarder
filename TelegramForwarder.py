@@ -141,7 +141,7 @@ async def main():
     choice = input("Enter your choice: ")
 
     if choice == "1":
-        asyncio.run(forwarder.list_chats())
+        await forwarder.list_chats()
     elif choice == "2":
         try:
             with open("forwarder.txt", "r") as file:
