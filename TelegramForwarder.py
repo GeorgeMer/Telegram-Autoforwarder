@@ -41,12 +41,10 @@ class TelegramForwarder:
         last_message_id = (await self.client.get_messages(source_chat_id, limit=1))[0].id
 
         while True:
-            print("Checking for messages and forwarding them...")
             # Get new messages since the last checked message
             messages = await self.client.get_messages(source_chat_id, min_id=(last_message_id + 1), limit=None)
 
             if (messages is None):
-                print("No new messages found")
                 await asyncio.sleep(self.try_delay)
                 continue
 
