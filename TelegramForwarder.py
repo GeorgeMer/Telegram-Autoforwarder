@@ -47,11 +47,10 @@ class TelegramForwarder:
             await asyncio.sleep(self.try_delay)
 
             # -- Get new messages since the last checked message
-            messages = await self.client.get_messages(source_chat_id, min_id=(last_message_id + 1), limit=None)
+            messages = await self.client.get_messages(source_chat_id, min_id=(last_message_id), limit=None)
 
-            # -- If no new messages, wait for a while before checking again
+            # -- If no new messages
             if (messages is None):
-                await asyncio.sleep(self.try_delay)
                 continue
 
             # -- If only one message, forward it
@@ -92,8 +91,6 @@ class TelegramForwarder:
         except Exception as e:
             print("Error forwarding messages: {}".format(e))
 
-# Function to read credentials from file
-
 
 def read_credentials():
     try:
@@ -106,8 +103,6 @@ def read_credentials():
     except FileNotFoundError:
         print("Credentials file not found.")
         return None, None, None
-
-# Function to write credentials to file
 
 
 def write_credentials(api_id, api_hash, phone_number):
