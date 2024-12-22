@@ -1,5 +1,4 @@
 import os
-import time
 import asyncio
 from telethon.sync import TelegramClient
 from telethon.tl.types import Message
