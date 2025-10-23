@@ -116,16 +116,17 @@ def read_config():
         with open("{}/config.txt".format(forwarder_config_folder), "r") as file:
             lines = file.readlines()
             try_delay = int(lines[0].strip())
-            return try_delay
+            option = int(lines[1].strip())
+            return try_delay, option
     except FileNotFoundError:
         print("Config file not found.")
         return None
 
 
-def write_config(try_delay):
+def write_config(try_delay, option):
     with open("{}/config.txt".format(forwarder_config_folder), "w") as file:
         file.write(str(try_delay) + "\n")
-
+        file.write(str(option) + "\n")
 
 def read_forwarder():
     try:
@@ -172,23 +173,18 @@ async def main():
         # Write credentials to file for future use
         write_credentials(api_id, api_hash, phone_number)
 
-    try_delay = read_config()
-    if try_delay is None:
+    try_delay, option = read_config()
+    if try_delay is None or option is None:
         try_delay = int(
             input("Enter the delay time in seconds to check for new messages: "))
-        write_config(try_delay)
+        option = int( input("Choose option. 1. List chats. or 2. Forward Messages. Enter here: "))
+        write_config(try_delay, option)
 
     forwarder = TelegramForwarder(api_id, api_hash, phone_number, try_delay)
 
-    print("Choose an option: \n")
-    print("1. List Chats \n")
-    print("2. Forward Messages. \n")
-
-    choice = input("Enter your choice: ")
-
-    if choice == "1":
+    if option == 1:
         await forwarder.list_chats()
-    elif choice == "2":
+    elif option == 2:
         source_chat_ids, destination_channel_id, keywords = read_forwarder()
         if source_chat_ids is None or destination_channel_id is None:
             source_chat_ids = input(
@@ -203,7 +199,7 @@ async def main():
         await run_loop(forwarder, source_chat_ids, destination_channel_id, keywords)
 
     else:
-        print("Invalid choice")
+        print("Invalid option")
 
 
 async def run_loop(forwarder, source_chat_ids, destination_channel_id, keywords):
