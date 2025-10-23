@@ -1,0 +1,6 @@
+services:
+  web:
+    build: .
+    command: >
+      bash -c "cd /code
+      && python TelegramForwarder.py"
