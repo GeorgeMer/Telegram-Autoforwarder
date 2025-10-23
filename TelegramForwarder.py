@@ -154,9 +154,10 @@ def write_forwarder(source_chat_ids, destination_channel_id, keywords):
 
 async def main():
     global forwarder_config_folder
-    forwarder_config_folder = input(
-        "Enter the folder name for the forwarder config files (existing, or where you want to save the data, empty to use 'default'): ")
-    if (forwarder_config_folder == ""):
+    if len(sys.argv) > 1:
+        forwarder_config_folder = sys.argv[1]
+
+    if forwarder_config_folder is None:
         forwarder_config_folder = "default"
 
     if not os.path.exists(forwarder_config_folder):

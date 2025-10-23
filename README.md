@@ -47,7 +47,9 @@ You can specify one or more keywords that, if found in a message, trigger the fo
     - **config.txt** — stores configuration properties, e.g. delay between checking for new messages
     - **forwarder.txt** — stores the source chat IDs, the destination chat ID, and the keywords
 
-    The subdirectory as well as all the data can be specified by running the script.
+    The subdirectory defaults to "default". A different subdirectory can be specified with a CLI argument when running the script.
+
+    The data can be specified by running the script.
 
     After one setup, you can rerun with the same subdirectory without having to input anything.
 
