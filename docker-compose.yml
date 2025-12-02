@@ -4,3 +4,4 @@ services:
     command: >
       bash -c "cd /code
       && python TelegramForwarder.py"
+    restart: always
